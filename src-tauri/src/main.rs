@@ -15,24 +15,11 @@ fn main() {
 
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![greet])
-        .system_tray(SystemTray::new().with_menu(SystemTrayMenu::new()))
         .setup(|app| {
 
             let app_handle = app.handle();
-            app_handle.plugin(tauri_plugin_single_instance::init(move |app, _argv, _cwd| {
-                let main_window = app.get_window("deeplink-single-instance");
-                if let Some(window) = main_window {
-                    window.show().unwrap();
-                    window.unminimize().unwrap();
-                    window.set_focus().unwrap();
-                } else {
-                    WindowBuilder::new(app, "deeplink-single-instance", WindowUrl::App("index.html".into()))
-                        .title("deeplink-single-instance")
-                        .inner_size(1000.0, 700.0)
-                        .center()
-                        .build()
-                        .unwrap();
-                }
+            app_handle.plugin(tauri_plugin_single_instance::init(move |_, _argv, _cwd| {
+                println!("I am not executed :/");
             }))?;
 
             if let Err(err) = tauri_plugin_deep_link::register("my-protocol", move |request| {
@@ -43,11 +30,6 @@ fn main() {
 
             Ok(())
         })
-        .build(tauri::generate_context!())
-        .unwrap()
-        .run(|_, event| {
-            if let RunEvent::ExitRequested { api, .. } = event {
-                api.prevent_exit();
-            }
-        });
+        .run(tauri::generate_context!())
+        .expect("Failed to run tauri app.")
 }
