@@ -1,7 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tauri::{Manager, WindowUrl, WindowBuilder};
+use tauri::{Manager, WindowUrl, WindowBuilder, UserAttentionType, RunEvent, SystemTray, SystemTrayMenu};
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
@@ -15,6 +15,7 @@ fn main() {
 
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![greet])
+        .system_tray(SystemTray::new().with_menu(SystemTrayMenu::new()))
         .setup(|app| {
 
             let app_handle = app.handle();
@@ -34,8 +35,19 @@ fn main() {
                 }
             }))?;
 
+            if let Err(err) = tauri_plugin_deep_link::register("my-protocol", move |request| {
+                println!("Received deeplink request: {}", request);
+            }) {
+                println!("Error registering the deep link plugin: {:?}", err);
+            }
+
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .unwrap()
+        .run(|_, event| {
+            if let RunEvent::ExitRequested { api, .. } = event {
+                api.prevent_exit();
+            }
+        });
 }
